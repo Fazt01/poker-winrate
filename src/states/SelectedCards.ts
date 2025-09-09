@@ -14,6 +14,8 @@ export function useSelectedCards(count: number, initialSelectedSlot?: number) {
     }))
   }
 
+  const clearCardAt = (i: number) => setCardAt(i, null)
+
   // returns whether after selecting a card the selection is cleared (as last card was selected)
   const setSelectedCard = (card: Card | null): boolean => {
     if (selectedSlot === null) {
@@ -30,24 +32,20 @@ export function useSelectedCards(count: number, initialSelectedSlot?: number) {
     }
   }
 
-  const selectSlot = (i: number | null) => {
-    setSelectedSlot(i)
-    setCardAt(i, null)
-  }
-
   return {
     state: {
       cards,
       selectedSlot
     },
-    selectSlot,
     setSelectedSlot,
     setSelectedCard,
+    clearCardAt,
   }
 }
 
 export type UseSelectedCards = ReturnType<typeof useSelectedCards>
 export type SelectedCardsProps = {
   state: UseSelectedCards["state"],
-  selectSlot: UseSelectedCards["selectSlot"],
+  setSelectedSlot: UseSelectedCards["setSelectedSlot"],
+  clearCardAt: UseSelectedCards["clearCardAt"],
 }

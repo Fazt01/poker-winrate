@@ -32,19 +32,19 @@ function App() {
         board.setSelectedCard(card)
       }}/>
       <h2>Hand</h2>
-      <Hand state={hand.state} selectSlot={
+      <Hand state={hand.state} setSelectedSlot={
         (i) => {
-          hand.selectSlot(i)
+          hand.setSelectedSlot(i)
           board.setSelectedSlot(null)
         }
-      }/>
+      } clearCardAt={hand.clearCardAt} />
       <h2>Board</h2>
-      <Board state={board.state} selectSlot={
+      <Board state={board.state} setSelectedSlot={
         (i) => {
-          board.selectSlot(i)
+          board.setSelectedSlot(i)
           hand.setSelectedSlot(null)
         }
-      }/>
+      } clearCardAt={board.clearCardAt}/>
       <WinrateChart solution={solution} hand={hand.state.cards}/>
     </>
   )

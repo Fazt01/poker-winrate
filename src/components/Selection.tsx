@@ -3,7 +3,7 @@ import {type Card, ranks, suits} from "../types/Card.ts";
 
 export default function Selection(
   {
-    onCardSelected
+    onCardSelected,
   }: {
     onCardSelected: (card: Card) => void;
   }

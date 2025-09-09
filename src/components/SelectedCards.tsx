@@ -17,7 +17,8 @@ export default function SelectedCards(
         key={i}
         card={props.state.cards[i]}
         selected={props.state.selectedSlot === i}
-        onClick={() => props.selectSlot(i)}
+        onClick={() => props.setSelectedSlot(i)}
+        onRightClick={() => props.clearCardAt(i)}
       />
     )
   }

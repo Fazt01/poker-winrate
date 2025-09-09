@@ -2,14 +2,22 @@ import styles from './Card.module.css'
 import type {Card, Suit} from '../types/Card.ts'
 
 export default function Card(
-  {card, selected, onClick}: {
+  {card, selected, onClick, onRightClick}: {
     card: Card | null,
     selected: boolean,
     onClick?: () => void,
+    onRightClick?: () => void
   },
 ) {
   return (
-    <div className={`${styles["card-outer"]} ${selected ? ` ${styles.selected}` : ""}`} onClick={onClick}>
+    <div
+      className={`${styles["card-outer"]} ${selected ? ` ${styles.selected}` : ""}`}
+      onClick={onClick}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        onRightClick?.()
+      }}
+    >
       <div className={`${coloringStyle(card)} ${styles.card}`}>
         {card && cardToText(card)}
       </div>
