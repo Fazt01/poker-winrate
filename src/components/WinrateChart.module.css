@@ -1,0 +1,23 @@
+div.chart {
+    margin: 40px;
+}
+
+.segment {
+    transition-duration: 1s;
+}
+
+.win.segment {
+    fill: green;
+}
+
+.tie.segment {
+    fill: yellow;
+}
+
+.loss.segment {
+    fill: red;
+}
+
+.my-hand {
+    fill: rgba(192, 192, 192, 0.5);
+}

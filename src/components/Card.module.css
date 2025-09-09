@@ -1,0 +1,49 @@
+.card {
+    background: white;
+    height: 60px;
+    width: 40px;
+    border-width: 1px;
+    border-color: black;
+    border-style: solid;
+    border-radius: 5px;
+    font-size: 20px;
+    box-sizing: border-box;
+    text-align: left;
+    padding-left: 4px;
+}
+
+.card-outer {
+    background: transparent;
+    height: 60px;
+    width: 40px;
+    padding: 5px;
+    border-color: black;
+    border-radius: 10px;
+    display:inline-block;
+    cursor: pointer;
+    vertical-align: bottom;
+}
+
+.card-outer:hover {
+    background: #646cff;
+}
+
+.card-outer.selected {
+    background: gray;
+}
+
+.card-outer.selected:hover {
+    background: #646cff;;
+}
+
+.card.red {
+    color: red;
+}
+
+.card.black {
+    color: black;
+}
+
+.card.blank {
+    background: #39399a;
+}
