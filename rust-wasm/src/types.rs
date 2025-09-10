@@ -79,14 +79,14 @@ impl Combination {
             WEIGHT_MULTIPLIER.pow(2),
             WEIGHT_MULTIPLIER,
         ];
-        const COMBINATION_TYPE_WEIGHT: u64 = WEIGHT_MULTIPLIER * 6;
+        const COMBINATION_TYPE_WEIGHT: u64 = WEIGHT_MULTIPLIER.pow(6);
         match self {
             Combination::HighCard(ranks) => {
                 ranks.iter().zip(WEIGHTS).map(|(&r, w)| w * r as u64).sum::<u64>()
             }
             Combination::Pair(ranks) => {
                 1 * COMBINATION_TYPE_WEIGHT +
-                ranks.iter().zip(WEIGHTS).map(|(&r, w)| w * r as u64).sum::<u64>()
+                    ranks.iter().zip(WEIGHTS).map(|(&r, w)| w * r as u64).sum::<u64>()
             }
             Combination::TwoPairs(ranks) => {
                 2 * COMBINATION_TYPE_WEIGHT +

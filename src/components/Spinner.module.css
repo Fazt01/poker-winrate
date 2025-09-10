@@ -1,0 +1,27 @@
+@keyframes grow {
+    from {
+        stroke-dasharray: 50px calc(314.15926px - 50px)
+    }
+    to {
+        stroke-dasharray: 200px calc(314.15926px - 200px)
+    }
+}
+
+@keyframes spin {
+    from {
+        stroke-dashoffset: 0;
+    }
+    to {
+        stroke-dashoffset: -314.15926535897932384626433832795px;
+    }
+}
+
+circle.spinner {
+    stroke: cornflowerblue;
+    stroke-width: 10px;
+    fill: transparent;
+
+    animation:
+        grow 1200ms ease-in-out infinite alternate,
+        spin 1000ms infinite linear;
+}

@@ -26,3 +26,18 @@ export interface Card {
   rank: Rank,
   suit: Suit,
 }
+
+const suitsMap: Record<Suit, string> = {
+  h: "♥",
+  d: "♦",
+  s: "♠",
+  c: "♣",
+}
+
+export function cardToText(card: Card): string {
+  let rank: string = card.rank
+  if (rank === "10") {
+    rank = "T"
+  }
+  return rank + suitsMap[card.suit]
+}

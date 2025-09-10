@@ -1,5 +1,5 @@
 use crate::types::{Rank, Suit};
-use crate::{types, Card, MaybeCard, Solution, Table, HandSolution};
+use crate::{types, Card, HandSolution, MaybeCard, Solution, Table};
 use anyhow::{bail, Context, Ok, Result};
 
 pub fn from_wasm_table(table: &Table) -> Result<types::Table> {
@@ -53,12 +53,21 @@ fn from_wasm_maybe_card(card: &MaybeCard) -> Result<Option<types::Card>> {
 }
 
 pub fn to_wasm_solution(solution: &types::Solution) -> Solution {
-    Solution{
-        hands: solution.hands.iter().map(|h| HandSolution{
-            hand: h.hand.iter().map(|c| to_wasm_card(c)).collect::<Vec<_>>().into(),
-            beats_me_count: h.beats_me_count,
-            is_beaten_count: h.is_beaten_count,
-        }).collect(),
+    Solution {
+        hands: solution
+            .hands
+            .iter()
+            .map(|h| HandSolution {
+                hand: h
+                    .hand
+                    .iter()
+                    .map(|c| to_wasm_card(c))
+                    .collect::<Vec<_>>()
+                    .into(),
+                beats_me_count: h.beats_me_count,
+                is_beaten_count: h.is_beaten_count,
+            })
+            .collect(),
         board_possibilities: solution.board_possibilities,
     }
 }

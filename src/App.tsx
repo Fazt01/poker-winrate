@@ -5,23 +5,59 @@ import Board from "./components/Board.tsx";
 import type {Card} from "./types/Card.ts";
 import {useSelectedCards} from "./states/SelectedCards.ts";
 import WinrateChart from "./components/WinrateChart.tsx";
-import {mock_solution} from "./mock_data/solution.ts";
 import solve from "./wasm/Solution.ts"
+import {useEffect, useState} from "react";
+import {AbortSignal} from "../rust-wasm/pkg";
+import type {Solution} from "./types/Solution.ts";
 
 function App() {
   const hand = useSelectedCards(2, 0)
   const board = useSelectedCards(5)
+  const [solution, setSolution] = useState<Solution | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorText, setErrorText] = useState<string | null>(null)
 
-  let solution = mock_solution
-  try {
-    solution = solve({
-      hand: hand.state.cards,
-      board: board.state.cards,
-    })
-    console.log("success", solution)
-  } catch (e) {
-    console.log("error", e)
-  }
+  useEffect(() => {
+    const cancellationToken = new AbortSignal()
+    setIsLoading(true)
+    setErrorText(null)
+    const f = async ()=> {
+      try {
+        const solution = await solve(cancellationToken, {
+          hand: hand.state.cards,
+          board: board.state.cards,
+        })
+        if (cancellationToken.aborted) {
+          console.log("solve: discarding stale solution", solution)
+          return
+        }
+        setSolution(solution)
+        setErrorText(null)
+        setIsLoading(false)
+        console.log("solve: success", solution)
+      } catch (e) {
+        if (cancellationToken.aborted) {
+          console.log("solve: discarding stale error: ", e)
+          return
+        }
+        console.log("solve: error:", e)
+        setSolution(null)
+        if (typeof e == "string") {
+          setErrorText(e)
+        } else {
+          setErrorText(null)
+        }
+        setIsLoading(false)
+      }
+    }
+    f();
+    return () => {
+      cancellationToken.abort()
+    }
+  }, [
+    hand.state.cards,
+    board.state.cards,
+  ])
 
   return (
     <>
@@ -37,7 +73,7 @@ function App() {
           hand.setSelectedSlot(i)
           board.setSelectedSlot(null)
         }
-      } clearCardAt={hand.clearCardAt} />
+      } clearCardAt={hand.clearCardAt}/>
       <h2>Board</h2>
       <Board state={board.state} setSelectedSlot={
         (i) => {
@@ -45,7 +81,15 @@ function App() {
           hand.setSelectedSlot(null)
         }
       } clearCardAt={board.clearCardAt}/>
-      <WinrateChart solution={solution} hand={hand.state.cards}/>
+      <p>
+        Pre-flop calculation currently very slow. Enter your hand and at least 3 board cards to see results in reasonable time.
+      </p>
+      <WinrateChart
+        solution={solution}
+        hand={hand.state.cards}
+        isLoading={isLoading}
+        errorText={errorText}
+      />
     </>
   )
 }

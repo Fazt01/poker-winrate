@@ -1,5 +1,5 @@
 import styles from './Card.module.css'
-import type {Card, Suit} from '../types/Card.ts'
+import {type Card, cardToText} from '../types/Card.ts'
 
 export default function Card(
   {card, selected, onClick, onRightClick}: {
@@ -33,19 +33,4 @@ function coloringStyle(card: Card | null) {
     return styles.red
   }
   return styles.black
-}
-
-const suitsMap: Record<Suit, string> = {
-  h: "♥",
-  d: "♦",
-  s: "♠",
-  c: "♣",
-}
-
-function cardToText(card: Card): string {
-  let rank: string = card.rank
-  if (rank === "10") {
-    rank = "T"
-  }
-  return rank + suitsMap[card.suit]
 }

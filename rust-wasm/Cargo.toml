@@ -8,12 +8,16 @@ crate-type = ["cdylib", "lib"]
 
 [dependencies]
 wasm-bindgen = "0.2.101"
+wasm-bindgen-futures = "0.4.51"
 anyhow = "1.0.99"
 strum = "0.27"
 strum_macros = "0.27"
 itertools = "0.14.0"
 rstest = "0.26.1"
 bencher = "0.1.5"
+futures = "0.3.31"
+async-std = "1.13.2"
+web-time = "1.1.0"
 
 [[bench]]
 name = "solve"

@@ -3,8 +3,8 @@ import type {Solution} from "../types/Solution.ts";
 import * as wasm from "../../rust-wasm/pkg";
 import type {Card, Rank, Suit} from "../types/Card.ts";
 
-export default function solve(table: Table): Solution {
-  return fromWasmSolution(wasm.solve(toWasmTable(table)))
+export default async function solve(cancellationToken: wasm.AbortSignal, table: Table): Promise<Solution> {
+  return fromWasmSolution(await wasm.solve(cancellationToken, toWasmTable(table)))
 }
 
 function toMaybeCard(c: Card | null): wasm.MaybeCard {

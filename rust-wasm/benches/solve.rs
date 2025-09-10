@@ -2,6 +2,7 @@
 extern crate bencher;
 
 use bencher::Bencher;
+use rust_wasm::signal::AbortSignal;
 use rust_wasm::solve::{solve};
 use rust_wasm::types::*;
 
@@ -39,7 +40,7 @@ fn a(bench: &mut Bencher) {
     };
 
     bench.iter(|| {
-        solve(&table)
+        async_std::task::block_on(solve(AbortSignal::new(), &table))
     })
 }
 
@@ -74,7 +75,7 @@ fn b(bench: &mut Bencher) {
     };
 
     bench.iter(|| {
-        solve(&table)
+        async_std::task::block_on(solve(AbortSignal::new(), &table))
     })
 }
 
