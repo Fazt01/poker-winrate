@@ -21,7 +21,7 @@ function App() {
     const cancellationToken = new AbortSignal()
     setIsLoading(true)
     setErrorText(null)
-    const f = async ()=> {
+    const f = async () => {
       try {
         const solution = await solve(cancellationToken, {
           hand: hand.state.cards,
@@ -68,25 +68,25 @@ function App() {
         board.setSelectedCard(card)
       }}/>
       <h2>Hand</h2>
-      <Hand state={hand.state} setSelectedSlot={
-        (i) => {
-          hand.setSelectedSlot(i)
-          board.setSelectedSlot(null)
-        }
-      } clearCardAt={hand.clearCardAt}/>
+      <Hand state={hand.state} setSelectedSlot={i => {
+        hand.setSelectedSlot(i)
+        board.setSelectedSlot(null)
+      }} clearCardAt={i => {
+        hand.clearCardAt(i)
+        hand.setSelectedSlot(i)
+        board.setSelectedSlot(null)
+      }}/>
       <h2>Board</h2>
-      <Board state={board.state} setSelectedSlot={
-        (i) => {
+      <Board state={board.state} setSelectedSlot={i => {
           board.setSelectedSlot(i)
           hand.setSelectedSlot(null)
-        }
-      } clearCardAt={board.clearCardAt}/>
-      <p>
-        Pre-flop calculation currently very slow. Enter your hand and at least 3 board cards to see results in reasonable time.
-      </p>
+      }} clearCardAt={i => {
+        board.clearCardAt(i)
+        board.setSelectedSlot(i)
+        hand.setSelectedSlot(null)
+      }}/>
       <WinrateChart
         solution={solution}
-        hand={hand.state.cards}
         isLoading={isLoading}
         errorText={errorText}
       />

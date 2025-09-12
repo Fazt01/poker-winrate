@@ -31,5 +31,7 @@ function fromWasmSolution(s: wasm.Solution): Solution {
       }
     }),
     boardPossibilities: Number(s.board_possibilities),
+    winCount: Number(s.win_count),
+    loseCount: Number(s.lose_count),
   }
 }

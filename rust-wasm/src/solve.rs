@@ -1,13 +1,15 @@
 use crate::types::{
-    Card, Combination, HandSolution, Rank, ReducedCard, Solution, Suit, Table, RANK_COUNT,
-    SUIT_COUNT,
+    Card, Combination, HandSolution, PrecalculatedSolution, Rank, ReducedCard, Solution, Suit,
+    Table, BOARD_SIZE, COMBINATION_SIZE, RANK_COUNT, SUIT_COUNT,
 };
-use crate::{log, signal};
-use anyhow::{bail, Result};
+use crate::{log, read_file, signal, ROOT_PATH};
+use anyhow::{bail, Context, Ok, Result};
+use async_once_cell::OnceCell;
 use async_std::task;
 use futures::future;
 use futures::future::Either;
 use itertools::Itertools;
+use serde::Deserialize;
 use std::cmp::{Ordering, Reverse};
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
@@ -15,8 +17,13 @@ use strum::IntoEnumIterator;
 use web_time::Instant;
 
 pub async fn solve(cancellation_token: signal::AbortSignal, table: &Table) -> Result<Solution> {
+    if table.board.iter().filter(|c| c.is_none()).count() == BOARD_SIZE {
+        return Ok(get_precalculated_solution(&table.hand).await?);
+    }
+
     let deck = full_deck();
-    let fut = solve_with_deck(table, &deck);
+    let mut cache = Default::default();
+    let fut = solve_with_deck(table, &deck, &mut cache);
     futures::pin_mut!(fut);
 
     match future::select(fut, cancellation_token).await {
@@ -27,7 +34,75 @@ pub async fn solve(cancellation_token: signal::AbortSignal, table: &Table) -> Re
     }
 }
 
-fn full_deck() -> Box<[Card]> {
+static SOLUTIONS: OnceCell<Box<[PrecalculatedSolution]>> = OnceCell::new();
+
+async fn get_precalculated_solution(hand: &Box<[Card]>) -> Result<Solution> {
+    let solutions = SOLUTIONS
+        .get_or_try_init(async {
+            let precalculated_solutions_bytes =
+                read_file(&(ROOT_PATH.to_owned() + "precalculated/preflop_solutions.json")).await?;
+            let mut deserializer =
+                serde_json::Deserializer::from_slice(&precalculated_solutions_bytes);
+            let solutions = Vec::<PrecalculatedSolution>::deserialize(&mut deserializer)?;
+            Ok(solutions.into_boxed_slice())
+        })
+        .await?;
+
+    // Precalculated solution contains only hands with heart diamond (offsuit) or heart-heart
+    // (suited) cards.
+    // Retrieve solution using such hand, and then re-map all suits in the retrieved solution so
+    // that odds don't change.
+
+    let mut suit_isomorphic_representative: Vec<Card> = Vec::from(hand.as_ref());
+    let mut suit_isomporphism: HashMap<Suit, Suit> = Default::default();
+    let mut unmapped_suits: HashSet<Suit> = HashSet::from_iter(Suit::iter());
+    suit_isomorphic_representative.sort_by(|lhs, rhs| lhs.rank.cmp(&rhs.rank).reverse());
+
+    suit_isomporphism.insert(suit_isomorphic_representative[0].suit, Suit::Hearts);
+    suit_isomorphic_representative[0].suit = Suit::Hearts;
+    unmapped_suits.remove(&Suit::Hearts);
+
+    let lower_suit = if hand[0].suit == hand[1].suit {
+        Suit::Hearts
+    } else {
+        Suit::Diamonds
+    };
+    suit_isomporphism.insert(suit_isomorphic_representative[1].suit, lower_suit);
+    suit_isomorphic_representative[1].suit = lower_suit;
+    unmapped_suits.remove(&lower_suit);
+
+    let mut unmapped_suits = unmapped_suits.into_iter();
+    for suit in Suit::iter() {
+        if suit_isomporphism.contains_key(&suit) {
+            continue
+        }
+        suit_isomporphism.insert(suit, unmapped_suits.next().context("no more suits to map in isomorphism")?);
+    }
+
+    let precalculated_solution = &solutions
+        .iter()
+        .find(|s| s.my_hand.as_ref().eq(suit_isomorphic_representative.as_slice()))
+        .with_context(|| format!("precalculated solution for hand {:?} not found", hand))?
+        .solution;
+
+    Ok(
+        Solution{
+            hands: precalculated_solution.hands.iter().map(|hand_solution| HandSolution{
+                hand: hand_solution.hand.iter().map(|card| Card{
+                    rank: card.rank,
+                    suit: suit_isomporphism[&card.suit],
+                }).collect_vec().into_boxed_slice(),
+                beats_me_count: hand_solution.beats_me_count,
+                is_beaten_count: hand_solution.is_beaten_count,
+            }).collect_vec().into_boxed_slice(),
+            board_possibilities: precalculated_solution.board_possibilities,
+            win_count: precalculated_solution.win_count,
+            lose_count: precalculated_solution.lose_count,
+        }
+    )
+}
+
+pub fn full_deck() -> Box<[Card]> {
     Suit::iter()
         .cartesian_product(Rank::iter())
         .map(|(suit, rank)| Card { rank, suit })
@@ -35,7 +110,11 @@ fn full_deck() -> Box<[Card]> {
         .into_boxed_slice()
 }
 
-async fn solve_with_deck(table: &Table, deck: &[Card]) -> Result<Solution> {
+pub async fn solve_with_deck(
+    table: &Table,
+    deck: &[Card],
+    cache: &mut HashMap<Box<[ReducedCard]>, u64>,
+) -> Result<Solution> {
     let mut yield_timer = YieldTimer::new(Duration::from_millis(50));
     let mut used_cards = table.hand.to_vec();
     used_cards.extend(table.board.iter().flatten());
@@ -68,12 +147,9 @@ async fn solve_with_deck(table: &Table, deck: &[Card]) -> Result<Solution> {
             candidate_hands.push(vec![card1, card2].into_boxed_slice())
         }
     }
-    candidate_hands.push(table.hand.clone());
 
     let choose = table.board.iter().filter(|x| x.is_none()).count();
     let choose_from = remaining_deck.len() - 2;
-
-    let mut cache = Default::default();
 
     let mut hands = Vec::with_capacity(candidate_hands.len());
 
@@ -89,16 +165,18 @@ async fn solve_with_deck(table: &Table, deck: &[Card]) -> Result<Solution> {
                 &candidate_hand,
                 table,
                 &remaining_deck,
-                &mut cache,
+                cache,
                 &mut yield_timer,
             )
             .await,
         )
     }
 
+    let score_fn = |hand: &HandSolution| hand.beats_me_count as i64 - hand.is_beaten_count as i64;
+
     hands.sort_by_key(|hand| {
         (
-            hand.beats_me_count as i64 - hand.is_beaten_count as i64,
+            score_fn(hand),
             // on same of the win/loss difference, fewer ties is better
             // (just so the result doesn't look so fragmented - expected value is the same though)
             hand.is_beaten_count,
@@ -106,8 +184,10 @@ async fn solve_with_deck(table: &Table, deck: &[Card]) -> Result<Solution> {
         )
     });
     Ok(Solution {
-        hands: hands.into(),
         board_possibilities: n_choose_m(choose_from, choose),
+        win_count: hands.partition_point(|hand| score_fn(hand) < 0) as u64,
+        lose_count: hands.len() as u64 - hands.partition_point(|hand| score_fn(hand) <= 0) as u64,
+        hands: hands.into(),
     })
 }
 
@@ -170,7 +250,7 @@ async fn hand_solution(
         }
 
         if cards_to_fill == 0 {
-            break
+            break;
         }
         let mut fill_card_i = cards_to_fill - 1;
 
@@ -217,7 +297,7 @@ fn reduce_card_set(cards: &[Card]) -> Box<[ReducedCard]> {
     for card in cards {
         suits_counts[card.suit as usize] += 1
     }
-    let flush_suit = Suit::iter().find(|&suit| suits_counts[suit as usize] >= 5);
+    let flush_suit = Suit::iter().find(|&suit| suits_counts[suit as usize] >= COMBINATION_SIZE);
     let mut reduced_set = Vec::with_capacity(cards.len());
     for card in cards {
         reduced_set.push(ReducedCard {
@@ -298,7 +378,7 @@ fn best_combination_from_sorted(cards_descending: &[ReducedCard]) -> Combination
 }
 
 fn find_straight_highest_rank(cards_descending: &[ReducedCard]) -> Option<Rank> {
-    if cards_descending.len() < 5 {
+    if cards_descending.len() < COMBINATION_SIZE {
         return None;
     }
     let mut last_rank = cards_descending[cards_descending.len() - 1].rank;
@@ -310,7 +390,7 @@ fn find_straight_highest_rank(cards_descending: &[ReducedCard]) -> Option<Rank> 
         }
         if last_rank as u32 + 1 == card.rank as u32 {
             run_count += 1;
-            if run_count >= 5 {
+            if run_count >= COMBINATION_SIZE {
                 straight_highest = Some(card.rank)
             }
         } else {
@@ -596,13 +676,13 @@ mod tests {
             hand: vec![deck[0], deck[1]].into_boxed_slice(),
             board: vec![Some(deck[3]), Some(deck[4]), Some(deck[5]), None, None].into_boxed_slice(),
         };
-        let result = block_on(solve_with_deck(&table, &deck)).unwrap();
+        let mut cache = Default::default();
+        let result = block_on(solve_with_deck(&table, &deck, &mut cache)).unwrap();
         // From 11 deck cards, 2 are mine, 2 are opponents, 3 are on board -> 4 remains to be chosen from into 2 empty board slots.
         // 4 choose 2 = 4! / (2! + (4-2)! = 24 / 4 = 6
         assert_eq!(result.board_possibilities, 6);
         // opponent has 6 cards to choose from = 15
-        // +1 for my hand that is also included
-        assert_eq!(result.hands.len(), 16);
+        assert_eq!(result.hands.len(), 15);
     }
 
     #[rstest]
@@ -621,14 +701,17 @@ mod tests {
             .into_boxed_slice(),
         };
 
-        let result = block_on(solve_with_deck(&table, &deck)).unwrap();
+        let mut cache = Default::default();
+        let result = block_on(solve_with_deck(&table, &deck, &mut cache)).unwrap();
 
         // From 52 deck cards, 2 are mine, 2 are opponents, 3 are on board -> 45 remains to be chosen from into 2 empty board slots.
         // 45 choose 2 = 45! / (2! + (45-2)! = 24 / 4 = 6
         assert_eq!(result.board_possibilities, 990);
         // opponent has 47 cards to choose from = 1081
-        // +1 for my hand that is also included
-        assert_eq!(result.hands.len(), 1082);
+        assert_eq!(result.hands.len(), 1081);
+
+        assert_eq!(result.win_count, result.hands.len() as u64);
+        assert_eq!(result.lose_count, 0);
 
         assert_royal_straigth_always_wins(table, &result);
     }
@@ -646,10 +729,14 @@ mod tests {
                 Some(deck[0]),
                 Some(deck[1]),
             ]
-                .into_boxed_slice(),
+            .into_boxed_slice(),
         };
 
-        let result = block_on(solve_with_deck(&table, &deck)).unwrap();
+        let mut cache = Default::default();
+        let result = block_on(solve_with_deck(&table, &deck, &mut cache)).unwrap();
+
+        assert_eq!(result.win_count, result.hands.len() as u64);
+        assert_eq!(result.lose_count, 0);
 
         assert_royal_straigth_always_wins(table, &result);
     }
@@ -665,7 +752,7 @@ mod tests {
             );
             // royal straight beats every hand in every possible board state
             assert_eq!(
-                hand.is_beaten_count, 990,
+                hand.is_beaten_count, result.board_possibilities,
                 "{hand:?} is not beaten by {:?} but it should",
                 table.hand
             );

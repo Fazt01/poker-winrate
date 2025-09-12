@@ -69,6 +69,8 @@ pub fn to_wasm_solution(solution: &types::Solution) -> Solution {
             })
             .collect(),
         board_possibilities: solution.board_possibilities,
+        win_count: solution.win_count,
+        lose_count: solution.lose_count,
     }
 }
 

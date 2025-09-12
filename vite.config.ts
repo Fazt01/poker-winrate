@@ -1,8 +1,19 @@
-import { defineConfig } from 'vite'
+import {defineConfig} from 'vite'
 import react from '@vitejs/plugin-react'
+import {viteStaticCopy} from "vite-plugin-static-copy";
 
 // https://vite.dev/config/
 export default defineConfig({
   "base": "/poker-winrate/",
-  plugins: [react()],
+  plugins: [
+    react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'precalculated',
+          dest: '.'
+        }
+      ]
+    })
+  ],
 })
