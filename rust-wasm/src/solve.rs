@@ -144,7 +144,9 @@ pub async fn solve_with_deck(
         .enumerate()
     {
         for &card2 in &remaining_deck[i + 1..] {
-            candidate_hands.push(vec![card1, card2].into_boxed_slice())
+            let mut candidate_hand = vec![card1, card2];
+            candidate_hand.sort_by_key(|c| (Reverse(c.rank), c.suit));
+            candidate_hands.push(candidate_hand.into_boxed_slice())
         }
     }
 

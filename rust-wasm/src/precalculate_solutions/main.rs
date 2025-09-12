@@ -49,8 +49,10 @@ fn main() -> Result<()> {
 
     let mut cache = Default::default();
 
-    let mut precalculated_solutions = Vec::with_capacity(hand_representatives.len());
-    for hand_representative in hand_representatives {
+    let len = hand_representatives.len();
+    let mut precalculated_solutions = Vec::with_capacity(len);
+    for (i, hand_representative) in hand_representatives.into_iter().enumerate() {
+        println!("starting hand {}/{}", i+1, len);
         let table = Table {
             hand: hand_representative.clone(),
             board: vec![None, None, None, None, None].into_boxed_slice(),
