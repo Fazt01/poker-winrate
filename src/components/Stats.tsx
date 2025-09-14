@@ -15,26 +15,29 @@ export default function ({solution}: { solution: Solution | null }) {
     }
   }
   return <div className={styles.stats}>
-    <div className={styles.row}></div>
-    <div className={styles.row}>
-      <div className={styles.label}>win:</div>
-      <div className={styles.value}>{solution ? format(100 * winCount! / possibilities!) : "N/A"}%</div>
-    </div>
-    <div className={styles.row}>
-      <div className={styles.label}>win or draw:</div>
-      <div
-        className={styles.value}>{solution ? format(100 * (possibilities! - loseCount!) / possibilities!) : "N/A"}%
+    <div>
+      <div className={styles.row}></div>
+      <div className={styles.row}>
+        <div className={styles.label}>win:</div>
+        <div className={styles.value}>{solution ? format(100 * winCount! / possibilities!) : "N/A"}%</div>
       </div>
-    </div>
-    <div className={styles.row}>
-      <div className={styles.label}>better than other hands:</div>
-      <div className={styles.value}>{solution ? format(100 * solution.winCount / solution.hands.length) : "N/A"}%</div>
-    </div>
-    <div className={styles.row}>
-      <div className={styles.label}>better than or equal to other hands:</div>
-      <div className={styles.value}>{solution
-        ? format(100 * (solution.hands.length - solution.loseCount) / solution.hands.length)
-        : "N/A"}%
+      <div className={styles.row}>
+        <div className={styles.label}>win or draw:</div>
+        <div
+          className={styles.value}>{solution ? format(100 * (possibilities! - loseCount!) / possibilities!) : "N/A"}%
+        </div>
+      </div>
+      <div className={styles.row}>
+        <div className={styles.label}>better than other hands:</div>
+        <div className={styles.value}>{solution ? format(100 * solution.winCount / solution.hands.length) : "N/A"}%
+        </div>
+      </div>
+      <div className={styles.row}>
+        <div className={styles.label}>better than or equal to other hands:</div>
+        <div className={styles.value}>{solution
+          ? format(100 * (solution.hands.length - solution.loseCount) / solution.hands.length)
+          : "N/A"}%
+        </div>
       </div>
     </div>
   </div>
