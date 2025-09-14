@@ -54,29 +54,29 @@ async fn get_precalculated_solution(hand: &Box<[Card]>) -> Result<Solution> {
     // that odds don't change.
 
     let mut suit_isomorphic_representative: Vec<Card> = Vec::from(hand.as_ref());
-    let mut suit_isomporphism: HashMap<Suit, Suit> = Default::default();
+    let mut suit_isomorphism: HashMap<Suit, Suit> = Default::default();
     let mut unmapped_suits: HashSet<Suit> = HashSet::from_iter(Suit::iter());
     suit_isomorphic_representative.sort_by(|lhs, rhs| lhs.rank.cmp(&rhs.rank).reverse());
 
-    suit_isomporphism.insert(suit_isomorphic_representative[0].suit, Suit::Hearts);
+    suit_isomorphism.insert(Suit::Hearts, suit_isomorphic_representative[0].suit);
+    unmapped_suits.remove(&suit_isomorphic_representative[0].suit);
     suit_isomorphic_representative[0].suit = Suit::Hearts;
-    unmapped_suits.remove(&Suit::Hearts);
 
     let lower_suit = if hand[0].suit == hand[1].suit {
         Suit::Hearts
     } else {
         Suit::Diamonds
     };
-    suit_isomporphism.insert(suit_isomorphic_representative[1].suit, lower_suit);
+    suit_isomorphism.insert(lower_suit, suit_isomorphic_representative[1].suit);
+    unmapped_suits.remove(&suit_isomorphic_representative[1].suit);
     suit_isomorphic_representative[1].suit = lower_suit;
-    unmapped_suits.remove(&lower_suit);
 
     let mut unmapped_suits = unmapped_suits.into_iter();
     for suit in Suit::iter() {
-        if suit_isomporphism.contains_key(&suit) {
+        if suit_isomorphism.contains_key(&suit) {
             continue
         }
-        suit_isomporphism.insert(suit, unmapped_suits.next().context("no more suits to map in isomorphism")?);
+        suit_isomorphism.insert(suit, unmapped_suits.next().context("no more suits to map in isomorphism")?);
     }
 
     let precalculated_solution = &solutions
@@ -90,7 +90,7 @@ async fn get_precalculated_solution(hand: &Box<[Card]>) -> Result<Solution> {
             hands: precalculated_solution.hands.iter().map(|hand_solution| HandSolution{
                 hand: hand_solution.hand.iter().map(|card| Card{
                     rank: card.rank,
-                    suit: suit_isomporphism[&card.suit],
+                    suit: suit_isomorphism[&card.suit],
                 }).collect_vec().into_boxed_slice(),
                 beats_me_count: hand_solution.beats_me_count,
                 is_beaten_count: hand_solution.is_beaten_count,
