@@ -9,6 +9,7 @@ import solve from "./wasm/Solution.ts"
 import {useEffect, useState} from "react";
 import {AbortSignal} from "../rust-wasm/pkg";
 import type {Solution} from "./types/Solution.ts";
+import Stats from "./components/Stats.tsx";
 
 function App() {
   const hand = useSelectedCards(2, 0)
@@ -61,30 +62,37 @@ function App() {
 
   return (
     <>
-      <Selection onCardSelected={(card: Card) => {
-        if (hand.setSelectedCard(card)) {
-          board.setSelectedSlot(0)
-        }
-        board.setSelectedCard(card)
-      }}/>
-      <h2>Hand</h2>
-      <Hand state={hand.state} setSelectedSlot={i => {
-        hand.setSelectedSlot(i)
-        board.setSelectedSlot(null)
-      }} clearCardAt={i => {
-        hand.clearCardAt(i)
-        hand.setSelectedSlot(i)
-        board.setSelectedSlot(null)
-      }}/>
-      <h2>Board</h2>
-      <Board state={board.state} setSelectedSlot={i => {
+      <div className="flex-container">
+        <div style={{margin: "20px"}}>
+          <Selection onCardSelected={(card: Card) => {
+            if (hand.setSelectedCard(card)) {
+              board.setSelectedSlot(0)
+            }
+            board.setSelectedCard(card)
+          }}/>
+        </div>
+        <div style={{margin: "20px"}}>
+        <h2>Hand</h2>
+        <Hand state={hand.state} setSelectedSlot={i => {
+          hand.setSelectedSlot(i)
+          board.setSelectedSlot(null)
+        }} clearCardAt={i => {
+          hand.clearCardAt(i)
+          hand.setSelectedSlot(i)
+          board.setSelectedSlot(null)
+        }}/>
+        <h2>Board</h2>
+        <Board state={board.state} setSelectedSlot={i => {
           board.setSelectedSlot(i)
           hand.setSelectedSlot(null)
-      }} clearCardAt={i => {
-        board.clearCardAt(i)
-        board.setSelectedSlot(i)
-        hand.setSelectedSlot(null)
-      }}/>
+        }} clearCardAt={i => {
+          board.clearCardAt(i)
+          board.setSelectedSlot(i)
+          hand.setSelectedSlot(null)
+        }}/>
+        <Stats solution={solution}/>
+        </div>
+      </div>
       <WinrateChart
         solution={solution}
         isLoading={isLoading}

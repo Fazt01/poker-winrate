@@ -21,6 +21,8 @@ export const mock_solution: Solution = {
 
   ],
   boardPossibilities: 5,
+  winCount: 6,
+  loseCount: 8,
 }
 
 type Hand = Card[]
